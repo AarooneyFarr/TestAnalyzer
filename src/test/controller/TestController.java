@@ -1,7 +1,7 @@
 package test.controller;
 
 import test.view.TestFrame;
-import test.view.TestPanel;
+import test.view.TestPanel2;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 
 
@@ -9,12 +9,12 @@ public class TestController
 {
 
 	private TestFrame appFrame;
-	private TestPanel tester;
+	private TestPanel2 tester;
 	
 	public TestController()
 	{
 		appFrame = new TestFrame(this);
-		tester = new TestPanel(this);
+		tester = new TestPanel2(this);
 		
 	}
 	

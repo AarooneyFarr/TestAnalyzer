@@ -10,13 +10,12 @@ public class TestFrame extends JFrame
 {
 
 	private TestController baseController;
-	private TestPanel appPanel;
 	private TestPanel2 appPanel2;
 
 	public TestFrame(TestController baseController)
 	{
 		this.baseController = baseController;
-		appPanel = new TestPanel(baseController);
+		
 		appPanel2 = new TestPanel2(baseController);
 		
 		setupPanel(850, 810);
