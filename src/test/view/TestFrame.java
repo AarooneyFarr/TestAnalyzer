@@ -18,7 +18,7 @@ public class TestFrame extends JFrame
 		
 		appPanel2 = new TestPanel2(baseController);
 		
-		setupPanel(850, 810);
+		setupPanel(900, 770);
 		setupListeners();
 	}
 

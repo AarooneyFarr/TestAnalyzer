@@ -1,0 +1,92 @@
+The correlation for Test One and Test Two is: 53%
+The correlation for Test One and Test Three is: 75%
+The correlation for Test Two and Test Three is: 60%
+The correlation for Test One and Test Four is: 56%
+The correlation for Test Two and Test Four is: 21%
+The correlation for Test Three and Test Four is: 63%
+______________________________________________________________________
+
+<html><bold>Name</bold>                         Test One       Test Two       Test Three       Test Four
+
+ Johnny Apple Smith Mcgee     433            W              217              379            
+
+ Banana                       201            Q              194              329            
+
+ Orange                       397            S              197              352.5          
+
+ Banana                       448            S              200              371.5          
+
+ Cherry                       477            S              202              246.5          
+
+ Grape                        463            S              214              429.5          
+
+ Peach                        392            S              186              276.5          
+
+ Apricot                      327            U              180              334            
+
+ Asparagus                    445            W              205              235.5          
+
+ Corn                         372            U              197              265.5          
+
+ Carrots                      414            U              208              397            
+
+ Cucumbers                    410            Y              216              516.5          
+
+ Chickory                     353            AA             214              420.5          
+
+ Onion                        514            W              207              301            
+
+ Celery                       350            V              208              362.5          
+
+ Broccoli                     316            V              182              265            
+
+ Zucchini                     416            U              210              346            
+
+ Pineapple                    396            U              184              419.5          
+
+ Plum                         472            W              193              360            
+
+ Squash                       395            V              197              261            
+
+ Tomato                       298            S              180              184.5          
+
+ Bean                         475            U              200              380            
+
+ Pledge                       393            V              185              214            
+
+ Lysol                        381            V              210              167            
+
+ Cheerios                     464            U              216              426.5          
+
+ Captain                      398            W              207              238            
+
+ Frosted                      442            S              213              357.5          
+
+ Flakes                       406            Z              204              205            
+
+ Spaghetti                    443            U              217              429.5          
+
+ Snickers                     451            U              195              264            
+
+ Cinnamon                     508            U              197              210.5          
+
+ Rol                          416            T              213              405.5          
+
+ Pasta                        215            W              181              167            
+
+ Chips                        443            U              209              387            
+
+ Drink                        430            W              215              370.5          
+
+ Salsa                        412            W              200              404            
+
+ Cereal                       428            V              202              285.5          
+
+ Bread                        165            P              162              167            
+
+ Muffin                       415            U              213              337            
+
+ Toast                        331            W              204              244.5          
+
+ Twinki                       367            W              205              254.5          
+

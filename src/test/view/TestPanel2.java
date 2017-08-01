@@ -7,6 +7,8 @@ import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
@@ -16,8 +18,13 @@ import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 import javax.swing.*;
 import javax.swing.JOptionPane;
 import java.awt.event.MouseListener;
+import java.awt.print.PrinterException;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.Vector;
@@ -29,6 +36,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.ScrollPane;
 import java.awt.Font;
+import java.awt.Checkbox;
 
 public class TestPanel2 extends JPanel
 {
@@ -43,6 +51,7 @@ public class TestPanel2 extends JPanel
 
 	private ArrayList<ArrayList<Object>> infoMatrix;
 	private ArrayList<ArrayList<Object>> scaledMatrix;
+	private ArrayList<ArrayList<Object>> deviationMatrix;
 	private Object[][] tableMatrix;
 	private ArrayList<Vector<Integer>> outlierList;
 
@@ -63,6 +72,8 @@ public class TestPanel2 extends JPanel
 	private JLabel lowerScoreLabel;
 	private JLabel upperScoreLabel;
 	private JLabel testScanLabel;
+	private JLabel outlierLabel;
+	private JLabel fileNameLabel;
 
 	private JLabel correlationLabel;
 	private JLabel correlationLabel2;
@@ -93,12 +104,38 @@ public class TestPanel2 extends JPanel
 	private JButton analyzeButton;
 	private JButton scaleButton;
 	private JButton corButton;
+	private JButton oriButton;
+	private JCheckBox quaBox;
+	private JCheckBox tarBox;
+	private JButton printButton;
+
+	// Saver
+	private JButton saveButton;
+	private JFileChooser saveChooser;
+	private String fileName;
+
+	// Target Score
+	private JLabel targetLabel;
+	private JSpinner targetSpinner1;
+	private JSpinner targetSpinner2;
+	private JSpinner targetSpinner3;
+	private JSpinner targetSpinner4;
 
 	// Booleans
 	private boolean isOneScaled;
 	private boolean isTwoScaled;
 	private boolean isThreeScaled;
 	private boolean isFourScaled;
+	private boolean isOriginal;
+	private boolean hasOutliers;
+	private boolean hasCorrelations;
+
+	// Separators
+	private JSeparator sepOne;
+	private JSeparator sepTwo;
+
+	// Outlier Coefficient Spinner
+	private JSpinner outlierSpinner;
 
 	public TestPanel2(TestController baseController)
 	{
@@ -111,10 +148,45 @@ public class TestPanel2 extends JPanel
 		// Action Buttons
 		fileButton = new JButton("File");
 		analyzeButton = new JButton("Analyze");
-		outliersButton = new JButton("Get Outliers");
+		outliersButton = new JButton("Show Outliers");
+		outliersButton.setEnabled(false);
 		scaleButton = new JButton("Scale Tests");
 		corButton = new JButton("Test Correlations");
+		corButton.setEnabled(false);
+		oriButton = new JButton("Show Original Scores");
+		oriButton.setEnabled(false);
+		quaBox = new JCheckBox("Show Quartiles");
+		quaBox.setEnabled(false);
+		tarBox = new JCheckBox("Target Score");
+		tarBox.setEnabled(false);
 		testSpinner = new JSpinner();
+		printButton = new JButton("Print Table");
+		
+
+		// Saver
+		saveButton = new JButton("Save Report");
+		saveButton.setEnabled(false);
+		saveChooser = new JFileChooser();
+		saveChooser.setCurrentDirectory(new java.io.File("."));
+		saveChooser.setDialogTitle("Choose where to save your test report");
+		saveChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+		saveChooser.setAcceptAllFileFilterUsed(false);
+		fileName = new String("Test Report");
+
+		// Target Score
+		targetLabel = new JLabel("Average Score");
+		targetSpinner1 = new JSpinner();
+		targetSpinner1.setModel(new SpinnerNumberModel(new Double(0), null, null, new Double(1)));
+		targetSpinner1.setEnabled(false);
+		targetSpinner2 = new JSpinner();
+		targetSpinner2.setModel(new SpinnerNumberModel(new Double(0), null, null, new Double(1)));
+		targetSpinner2.setEnabled(false);
+		targetSpinner3 = new JSpinner();
+		targetSpinner3.setModel(new SpinnerNumberModel(new Double(0), null, null, new Double(1)));
+		targetSpinner3.setEnabled(false);
+		targetSpinner4 = new JSpinner();
+		targetSpinner4.setModel(new SpinnerNumberModel(new Double(0), null, null, new Double(1)));
+		targetSpinner4.setEnabled(false);
 
 		// TestFields
 		testOneField = new JTextField("Test One");
@@ -123,7 +195,7 @@ public class TestPanel2 extends JPanel
 		testFourField = new JTextField("Test Four");
 
 		// Test type selectors
-		String[] choices = new String[] { "No Test", "Number Scale", "Alphabet Scale" };
+		String[] choices = new String[] { "No Test", "Number Scale", "G. Reading Scale" };
 		testOneType = new JComboBox(choices);
 		testTwoType = new JComboBox(choices);
 		testThreeType = new JComboBox(choices);
@@ -134,6 +206,9 @@ public class TestPanel2 extends JPanel
 		lowerScoreLabel = new JLabel("Lowest possible score");
 		upperScoreLabel = new JLabel("Highest possible score");
 		testScanLabel = new JLabel("Tests to scan for:");
+		outlierLabel = new JLabel("Outlier Coefficient");
+		outlierLabel.setEnabled(false);
+		fileNameLabel = new JLabel("Current File is: ");
 
 		correlationLabel = new JLabel("");
 		correlationLabel.setFont(new Font("Tahoma", Font.PLAIN, 10));
@@ -173,6 +248,18 @@ public class TestPanel2 extends JPanel
 		isTwoScaled = false;
 		isThreeScaled = false;
 		isFourScaled = false;
+		isOriginal = false;
+		hasOutliers = false;
+		hasCorrelations = false;
+
+		// Separators
+		sepOne = new JSeparator();
+		sepTwo = new JSeparator();
+
+		// Outlier Coefficient Spinner
+		outlierSpinner = new JSpinner();
+		outlierSpinner.setModel(new SpinnerNumberModel(new Double(2), new Double(0), null, new Double(0.1)));
+		outlierSpinner.setEnabled(false);
 
 		setupTable();
 		setupPanel();
@@ -183,7 +270,7 @@ public class TestPanel2 extends JPanel
 
 	private void setupTable()
 	{
-		DefaultTableModel data = new DefaultTableModel(tableMatrix, new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText()})
+		DefaultTableModel data = new DefaultTableModel(tableMatrix, new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText() })
 		{
 			private static final long serialVersionUID = 1L;
 
@@ -218,20 +305,45 @@ public class TestPanel2 extends JPanel
 				point2.add(col);
 				point2.add(1);
 
-				if (outlierList.contains(point))
+				Vector<Integer> point3 = new Vector<Integer>();
+				point3.add(row);
+				point3.add(col);
+				point3.add(2);
+
+				Vector<Integer> point4 = new Vector<Integer>();
+				point4.add(row);
+				point4.add(col);
+				point4.add(3);
+
+				if (outlierList.contains(point) && hasOutliers == true)
 				{
 
 					comp.setBackground(Color.RED);
+					comp.setForeground(Color.BLACK);
+
 				}
-				else if (outlierList.contains(point2))
+				else if (outlierList.contains(point2) && hasOutliers == true)
 				{
 
+					comp.setBackground(Color.BLUE.brighter());
+					comp.setForeground(Color.WHITE);
+				}
+				else if (outlierList.contains(point3) && quaBox.isSelected() && hasOutliers == true)
+				{
 					comp.setBackground(Color.GREEN);
+					comp.setForeground(Color.BLACK);
+				}
+				else if (outlierList.contains(point4) && quaBox.isSelected() && hasOutliers == true)
+				{
+					comp.setBackground(Color.YELLOW);
+					comp.setForeground(Color.BLACK);
+
 				}
 
 				else
 				{
 					comp.setBackground(table.getBackground());
+					comp.setForeground(Color.BLACK);
 				}
 
 				return comp;
@@ -241,7 +353,7 @@ public class TestPanel2 extends JPanel
 
 		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		table.setRowHeight(30);
-		table.getColumnModel().getColumn(0).setPreferredWidth(150);
+		table.getColumnModel().getColumn(0).setPreferredWidth(180);
 		table.setMinimumSize(new Dimension(200, 200));
 		table.setEnabled(false);
 		table.setModel(data);
@@ -284,6 +396,20 @@ public class TestPanel2 extends JPanel
 		add(correlationLabel4);
 		add(correlationLabel5);
 		add(correlationLabel6);
+		add(sepOne);
+		add(sepTwo);
+		add(outlierLabel);
+		add(outlierSpinner);
+		add(fileNameLabel);
+		add(oriButton);
+		add(quaBox);
+		add(saveButton);
+		add(targetLabel);
+		add(targetSpinner1);
+		add(targetSpinner2);
+		add(targetSpinner3);
+		add(targetSpinner4);
+		add(tarBox);
 
 		// add(table);
 
@@ -295,7 +421,7 @@ public class TestPanel2 extends JPanel
 	private void setupLayout()
 	{
 		setLayout(null);
-		fileButton.setBounds(238, 731, 123, 30);
+		fileButton.setBounds(209, 690, 123, 30);
 		testOneField.setBounds(10, 38, 86, 20);
 		testTwoField.setBounds(10, 69, 86, 20);
 		testThreeField.setBounds(10, 100, 86, 20);
@@ -305,30 +431,56 @@ public class TestPanel2 extends JPanel
 		testThreeType.setBounds(122, 100, 133, 20);
 		testFourType.setBounds(122, 131, 133, 20);
 		testTypeLabel.setBounds(122, 11, 55, 16);
+
+		// Lower limit grouping
 		testOneLowerSpinner.setBounds(291, 38, 86, 20);
 		testTwoLowerSpinner.setBounds(291, 69, 86, 20);
 		testThreeLowerSpinner.setBounds(291, 100, 86, 20);
 		testFourLowerSpinner.setBounds(291, 131, 86, 20);
 		lowerScoreLabel.setBounds(290, 11, 139, 16);
+
+		// Upper limit grouping
 		testOneUpperSpinner.setBounds(453, 38, 86, 20);
 		testTwoUpperSpinner.setBounds(453, 69, 86, 20);
 		testThreeUpperSpinner.setBounds(453, 100, 86, 20);
 		testFourUpperSpinner.setBounds(453, 131, 86, 20);
-		upperScoreLabel.setBounds(463, 11, 139, 16);
-		scrollPane.setBounds(369, 175, 462, 545);
+		upperScoreLabel.setBounds(453, 11, 139, 16);
+
+		// Target score grouping
+		targetLabel.setBounds(612, 11, 139, 16);
+		targetSpinner1.setBounds(612, 38, 86, 20);
+		targetSpinner2.setBounds(612, 69, 86, 20);
+		targetSpinner3.setBounds(612, 100, 86, 20);
+		targetSpinner4.setBounds(612, 131, 86, 20);
+
+		scrollPane.setBounds(369, 175, 505, 545);
 		table.setBounds(30, 311, 147, 102);
-		testSpinner.setBounds(176, 736, 29, 20);
-		testScanLabel.setBounds(69, 739, 123, 14);
+		testSpinner.setBounds(147, 695, 29, 20);
+		testScanLabel.setBounds(40, 698, 99, 14);
 		analyzeButton.setBounds(291, 334, 123, 30);
-		outliersButton.setBounds(31, 187, 146, 30);
-		scaleButton.setBounds(31, 228, 146, 30);
-		corButton.setBounds(31, 270, 146, 30);
+		fileNameLabel.setBounds(10, 573, 322, 30);
+
 		correlationLabel.setBounds(10, 327, 322, 30);
 		correlationLabel2.setBounds(10, 368, 322, 30);
 		correlationLabel3.setBounds(10, 409, 322, 30);
 		correlationLabel4.setBounds(10, 450, 322, 30);
 		correlationLabel5.setBounds(10, 491, 322, 30);
 		correlationLabel6.setBounds(10, 532, 322, 30);
+
+		// Button Grouping
+		scaleButton.setBounds(10, 175, 146, 30);
+		oriButton.setBounds(166, 175, 166, 30);
+		sepOne.setBounds(10, 210, 292, 20);
+
+		outliersButton.setBounds(10, 215, 146, 30);
+		outlierLabel.setBounds(166, 215, 110, 30);
+		outlierSpinner.setBounds(286, 220, 46, 20);
+		quaBox.setBounds(10, 245, 146, 30);
+		tarBox.setBounds(166, 245, 146, 30);
+		sepTwo.setBounds(10, 281, 292, 20);
+
+		corButton.setBounds(10, 286, 146, 30);
+		saveButton.setBounds(209, 649, 123, 30);
 
 	}
 
@@ -343,19 +495,8 @@ public class TestPanel2 extends JPanel
 				currentFile = null;
 				if (returnVal == JFileChooser.APPROVE_OPTION)
 				{
-					infoMatrix.clear();
-					scaledMatrix.clear();
-					outlierList.clear();
-					isOneScaled = false;
-					isTwoScaled = false;
-					isThreeScaled = false;
-					isFourScaled = false;
-					correlationLabel.setText("");
-					correlationLabel2.setText("");
-					correlationLabel3.setText("");
-					correlationLabel4.setText("");
-					correlationLabel5.setText("");
-					correlationLabel6.setText("");
+					resetAllFields();
+					fileNameLabel.setText("Current File is:    " + fileChooser.getSelectedFile().getName());
 
 					testNumber = (int) testSpinner.getValue();
 
@@ -366,12 +507,104 @@ public class TestPanel2 extends JPanel
 				}
 			}
 		});
+		
+		saveButton.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent click)
+			{
+				try {
+				    boolean complete = table.print();
+				    if (complete) {
+				        /* show a success message  */
+				        System.out.println("Print successful");
+				    } else {
+				        /*show a message indicating that printing was cancelled */
+				        System.out.println("Print canceled");
+				    }
+				} catch (PrinterException pe) {
+				    /* Printing failed, report to the user */
+				    System.out.println("Print failed");
+				}
+			}
+		});
+//TODO fix this
+		saveButton.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent click)
+			{
+				if (hasCorrelations == true || testNumber == 1)
+				{
+					fileName = JOptionPane.showInputDialog("Name for the test report file");
+
+					if (saveChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
+					{
+						System.out.println("getCurrentDirectory(): " + saveChooser.getCurrentDirectory());
+						System.out.println("getSelectedFile() : " + saveChooser.getSelectedFile());
+						writeFile(saveChooser.getSelectedFile());
+					}
+					else
+					{
+						System.out.println("No Selection ");
+					}
+				}
+				else
+				{
+					JOptionPane.showMessageDialog(null, "There is no report to save.");
+				}
+				
+				
+			}
+		});
 
 		outliersButton.addActionListener(new ActionListener()
 		{
 			public void actionPerformed(ActionEvent e)
 			{
-				getOutliers();
+				if (hasOutliers == false)
+				{
+					getOutliers();
+					outliersButton.setText("Hide Outliers");
+					hasOutliers = true;
+				}
+				else if (hasOutliers == true)
+				{
+					hasOutliers = false;
+					outliersButton.setText("Show Outliers");
+					quaBox.setSelected(false);
+					tarBox.setSelected(false);
+					setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText() });
+				}
+			}
+		});
+
+		quaBox.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent click)
+			{
+				fillTable(scaledMatrix);
+			}
+		});
+
+		tarBox.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent click)
+			{
+				if(tarBox.isSelected())
+				{
+				targetSpinner1.setEnabled(true);
+				targetSpinner2.setEnabled(true);
+				targetSpinner3.setEnabled(true);
+				targetSpinner4.setEnabled(true);
+				getOutliers((Double) targetSpinner1.getValue(), (Double) targetSpinner2.getValue(), (Double) targetSpinner3.getValue(), (Double) targetSpinner4.getValue());
+				}
+				else
+				{
+					targetSpinner1.setEnabled(false);
+					targetSpinner2.setEnabled(false);
+					targetSpinner3.setEnabled(false);
+					targetSpinner4.setEnabled(false);
+					getOutliers();
+				}
 			}
 		});
 
@@ -382,6 +615,38 @@ public class TestPanel2 extends JPanel
 				scaleTests(scaledMatrix);
 				fillTable(scaledMatrix);
 				table.repaint();
+
+				if (isOneScaled == true)
+				{
+
+					oriButton.setEnabled(true);
+					outliersButton.setEnabled(true);
+					corButton.setEnabled(true);
+					quaBox.setEnabled(true);
+					tarBox.setEnabled(true);
+					outlierLabel.setEnabled(true);
+					outlierSpinner.setEnabled(true);
+				}
+			}
+		});
+
+		oriButton.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent e)
+			{
+				if (isOriginal == false)
+				{
+					showOriginalScores();
+					oriButton.setText("Show Scaled scores");
+					isOriginal = true;
+				}
+				else if (isOriginal == true)
+				{
+					fillTable(scaledMatrix);
+					oriButton.setText("Show Original scores");
+					isOriginal = false;
+				}
+
 			}
 		});
 
@@ -392,8 +657,9 @@ public class TestPanel2 extends JPanel
 				if (isOneScaled == true)
 				{
 					testCorrelations();
-					fillTable(scaledMatrix);
-					table.repaint();
+					hasCorrelations = true;
+					saveButton.setEnabled(true);
+
 				}
 			}
 		});
@@ -402,7 +668,7 @@ public class TestPanel2 extends JPanel
 		{
 			public void actionPerformed(ActionEvent e)
 			{
-				setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText()});
+				setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText() });
 			}
 		});
 
@@ -410,7 +676,7 @@ public class TestPanel2 extends JPanel
 		{
 			public void actionPerformed(ActionEvent e)
 			{
-				setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText()});
+				setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText() });
 			}
 		});
 
@@ -418,7 +684,7 @@ public class TestPanel2 extends JPanel
 		{
 			public void actionPerformed(ActionEvent e)
 			{
-				setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText()});
+				setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText() });
 			}
 		});
 
@@ -426,9 +692,68 @@ public class TestPanel2 extends JPanel
 		{
 			public void actionPerformed(ActionEvent e)
 			{
-				setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText()});
+				setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText() });
 			}
 		});
+
+		ChangeListener testSpinnerListener = new ChangeListener()
+		{
+			public void stateChanged(ChangeEvent e)
+			{
+				if ((int) testSpinner.getValue() == 1)
+				{
+					testFourType.setSelectedIndex(0);
+					testThreeType.setSelectedIndex(0);
+					testTwoType.setSelectedIndex(0);
+				}
+				if ((int) testSpinner.getValue() == 2)
+				{
+					testFourType.setSelectedIndex(0);
+					testThreeType.setSelectedIndex(0);
+				}
+				if ((int) testSpinner.getValue() == 3)
+				{
+					testFourType.setSelectedIndex(0);
+				}
+			}
+		};
+		testSpinner.addChangeListener(testSpinnerListener);
+		
+		ChangeListener outlierSpinnerListener = new ChangeListener()
+		{
+			public void stateChanged(ChangeEvent e)
+			{
+				if(tarBox.isSelected())
+				{
+					getOutliers((Double) targetSpinner1.getValue(), (Double) targetSpinner2.getValue(), (Double) targetSpinner3.getValue(), (Double) targetSpinner4.getValue());
+				}
+				else
+				{
+					getOutliers();
+				}
+			}
+		};
+		outlierSpinner.addChangeListener(outlierSpinnerListener);
+		
+		ChangeListener targetSpinnerListener = new ChangeListener()
+		{
+			public void stateChanged(ChangeEvent e)
+			{
+				if(tarBox.isSelected())
+				{
+					getOutliers((Double) targetSpinner1.getValue(), (Double) targetSpinner2.getValue(), (Double) targetSpinner3.getValue(), (Double) targetSpinner4.getValue());
+				}
+				else
+				{
+					getOutliers();
+				}
+			}
+		};
+
+		targetSpinner1.addChangeListener(targetSpinnerListener);
+		targetSpinner2.addChangeListener(targetSpinnerListener);
+		targetSpinner3.addChangeListener(targetSpinnerListener);
+		targetSpinner4.addChangeListener(targetSpinnerListener);
 
 	}
 
@@ -462,6 +787,13 @@ public class TestPanel2 extends JPanel
 			tempList.add(null);
 			tempList.add(null);
 
+			ArrayList<Object> itempList = new ArrayList<Object>();
+			itempList.add(null);
+			itempList.add(null);
+			itempList.add(null);
+			itempList.add(null);
+			itempList.add(null);
+
 			tempString = fileScanner.nextLine();
 			tempoList = tempString.split(delims);
 
@@ -477,6 +809,7 @@ public class TestPanel2 extends JPanel
 			{
 
 				tempList.set(i, tempoList[tempoList.length - j]);
+				itempList.set(i, tempoList[tempoList.length - j]);
 
 			}
 			/*
@@ -486,16 +819,166 @@ public class TestPanel2 extends JPanel
 			 * tempoList[tempoList.length - 4]);
 			 */
 			tempList.set(0, name);
+			itempList.set(0, name);
 
-			infoMatrix.add(tempList);
+			infoMatrix.add(itempList);
 			scaledMatrix.add(tempList);
 
 		}
 
 		checkFile();
 		fillTable(infoMatrix);
-		setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText()});
+		setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText() });
 
+	}
+
+	public void writeFile(File file)
+	{
+
+		try
+		{
+			PrintWriter writer = new PrintWriter(file + "\\" + fileName + ".txt", "UTF-8");
+			if (testNumber == 4)
+			{
+				writer.println(correlationLabel.getText());
+				writer.println(correlationLabel2.getText());
+				writer.println(correlationLabel3.getText());
+				writer.println(correlationLabel4.getText());
+				writer.println(correlationLabel5.getText());
+				writer.println(correlationLabel6.getText());
+				/*writer.println("______________________________________________________________________");
+				writer.println();
+				writer.println("<html><bold>Name</bold>                         " + testOneField.getText() + "       " + testTwoField.getText() + "       " + testThreeField.getText() + "       " + testFourField.getText());
+				writer.println();
+
+				for (ArrayList<Object> current : infoMatrix)
+				{
+					String list = "";
+					if (testNumber == 4)
+					{
+						String name = (String) current.get(0);
+						String testOne = (String) " " + current.get(1);
+						String testTwo = (String) " " + current.get(2);
+						String testThree = (String) " " + current.get(3);
+						String testFour = (String) " " + current.get(4);
+
+						while (name.length() < 29)
+						{
+							name = name + " ";
+						}
+						while (testOne.length() < testOneField.getText().length() + 7)
+						{
+							testOne = testOne + " ";
+						}
+						while (testTwo.length() < testTwoField.getText().length() + 7)
+						{
+							testTwo = testTwo + " ";
+						}
+						while (testThree.length() < testThreeField.getText().length() + 7)
+						{
+							testThree = testThree + " ";
+						}
+						while (testFour.length() < testFourField.getText().length() + 7)
+						{
+							testFour = testFour + " ";
+						}
+
+						list = name + testOne + testTwo + testThree + testFour;
+						writer.println(list);
+					}
+					if (testNumber == 3)
+					{
+						String name = (String) current.get(0);
+						String testOne = (String) " " + current.get(1);
+						String testTwo = (String) " " + current.get(2);
+						String testThree = (String) " " + current.get(3);
+
+						while (name.length() < 29)
+						{
+							name = name + " ";
+						}
+						while (testOne.length() < testOneField.getText().length() + 7)
+						{
+							testOne = testOne + " ";
+						}
+						while (testTwo.length() < testTwoField.getText().length() + 7)
+						{
+							testTwo = testTwo + " ";
+						}
+						while (testThree.length() < testThreeField.getText().length() + 7)
+						{
+							testThree = testThree + " ";
+						}
+
+						list = name + testOne + testTwo + testThree;
+						writer.println(list);
+					}
+					if (testNumber == 2)
+					{
+						String name = (String) current.get(0);
+						String testOne = (String) " " + current.get(1);
+						String testTwo = (String) " " + current.get(2);
+
+						while (name.length() < 29)
+						{
+							name = name + " ";
+						}
+						while (testOne.length() < testOneField.getText().length() + 7)
+						{
+							testOne = testOne + " ";
+						}
+						while (testTwo.length() < testTwoField.getText().length() + 7)
+						{
+							testTwo = testTwo + " ";
+						}
+
+						list = name + testOne + testTwo;
+						writer.println(list);
+					}
+					if (testNumber == 1)
+					{
+						String name = (String) current.get(0);
+						String testOne = (String) " " + current.get(1);
+
+						while (name.length() < 29)
+						{
+							name = name + " ";
+						}
+						while (testOne.length() < testOneField.getText().length() + 7)
+						{
+							testOne = testOne + " ";
+						}
+
+						list = name + testOne;
+						writer.println(list);
+					}
+					writer.println();
+
+				}
+*/
+			}
+			if (testNumber == 3)
+			{
+				writer.println(correlationLabel.getText());
+				writer.println(correlationLabel2.getText());
+				writer.println(correlationLabel3.getText());
+			}
+			if (testNumber == 2)
+			{
+				writer.println(correlationLabel.getText());
+			}
+			if (testNumber == 1)
+			{
+
+			}
+			writer.close();
+			System.out.println("File has been written");
+
+		}
+		catch (Exception e)
+		{
+			System.out.println("Could not create file");
+		}
 	}
 
 	private void fillTable(ArrayList<ArrayList<Object>> testList)
@@ -510,7 +993,7 @@ public class TestPanel2 extends JPanel
 			}
 		}
 
-		setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText()});
+		setTable(new String[] { "Name", testOneField.getText(), testTwoField.getText(), testThreeField.getText(), testFourField.getText() });
 	}
 
 	private void setTable(String[] header)
@@ -518,7 +1001,7 @@ public class TestPanel2 extends JPanel
 
 		DefaultTableModel data = new DefaultTableModel(tableMatrix, header);
 		table.setModel(data);
-		table.getColumnModel().getColumn(0).setPreferredWidth(150);
+		table.getColumnModel().getColumn(0).setPreferredWidth(180);
 
 		table.repaint();
 	}
@@ -609,6 +1092,8 @@ public class TestPanel2 extends JPanel
 
 	private void scaleTests(ArrayList<ArrayList<Object>> testList)
 	{
+		boolean scaling = false;
+
 		for (ArrayList<Object> current : testList)
 		{
 
@@ -617,11 +1102,13 @@ public class TestPanel2 extends JPanel
 				if (testOneType.getSelectedItem().equals((String) "Number Scale"))
 				{
 					current.set(1, (scale(Double.parseDouble((String) current.get(1)), (int) testOneLowerSpinner.getValue(), (int) testOneUpperSpinner.getValue())));
+					scaling = true;
 
 				}
-				else if (testOneType.getSelectedItem().equals((String) "Alphabet Scale"))
+				else if (testOneType.getSelectedItem().equals((String) "G. Reading Scale"))
 				{
 					current.set(1, scaleAlphabet((String) current.get(1)));
+					scaling = true;
 
 				}
 			}
@@ -631,11 +1118,13 @@ public class TestPanel2 extends JPanel
 				if (testTwoType.getSelectedItem().equals((String) "Number Scale"))
 				{
 					current.set(2, (scale(Double.parseDouble((String) current.get(2)), (int) testTwoLowerSpinner.getValue(), (int) testTwoUpperSpinner.getValue())));
+					scaling = true;
 
 				}
-				else if (testTwoType.getSelectedItem().equals((String) "Alphabet Scale"))
+				else if (testTwoType.getSelectedItem().equals((String) "G. Reading Scale"))
 				{
 					current.set(2, scaleAlphabet((String) current.get(2)));
+					scaling = true;
 
 				}
 			}
@@ -645,11 +1134,13 @@ public class TestPanel2 extends JPanel
 				if (testThreeType.getSelectedItem().equals((String) "Number Scale"))
 				{
 					current.set(3, (scale(Double.parseDouble((String) current.get(3)), (int) testThreeLowerSpinner.getValue(), (int) testThreeUpperSpinner.getValue())));
+					scaling = true;
 
 				}
-				else if (testThreeType.getSelectedItem().equals((String) "Alphabet Scale"))
+				else if (testThreeType.getSelectedItem().equals((String) "G. Reading Scale"))
 				{
 					current.set(3, scaleAlphabet((String) current.get(3)));
+					scaling = true;
 
 				}
 			}
@@ -659,20 +1150,26 @@ public class TestPanel2 extends JPanel
 				if (testFourType.getSelectedItem().equals((String) "Number Scale"))
 				{
 					current.set(4, (scale(Double.parseDouble((String) current.get(4)), (int) testFourLowerSpinner.getValue(), (int) testFourUpperSpinner.getValue())));
+					scaling = true;
 
 				}
-				else if (testFourType.getSelectedItem().equals((String) "Alphabet Scale"))
+				else if (testFourType.getSelectedItem().equals((String) "G. Reading Scale"))
 				{
 					current.set(4, scaleAlphabet((String) current.get(4)));
+					scaling = true;
 
 				}
 			}
 
 		}
-		isOneScaled = true;
-		isTwoScaled = true;
-		isThreeScaled = true;
-		isFourScaled = true;
+
+		if (scaling == true)
+		{
+			isOneScaled = true;
+			isTwoScaled = true;
+			isThreeScaled = true;
+			isFourScaled = true;
+		}
 
 	}
 
@@ -682,6 +1179,9 @@ public class TestPanel2 extends JPanel
 		ArrayList<Object> testTwoList = new ArrayList<Object>();
 		ArrayList<Object> testThreeList = new ArrayList<Object>();
 		ArrayList<Object> testFourList = new ArrayList<Object>();
+		outlierList.clear();
+
+		double outlierCoefficient = (double) this.outlierSpinner.getValue();
 
 		for (ArrayList<Object> current : scaledMatrix)
 		{
@@ -690,7 +1190,7 @@ public class TestPanel2 extends JPanel
 				testOneList.add(current.get(1));
 
 			}
-			else if (isOneScaled == true)
+			else if (isOneScaled == true && testOneType.getSelectedIndex() != 0)
 			{
 				testOneList.add(current.get(1));
 			}
@@ -699,7 +1199,7 @@ public class TestPanel2 extends JPanel
 			{
 				testTwoList.add(current.get(2));
 			}
-			else if (isTwoScaled == true)
+			else if (isTwoScaled == true && testTwoType.getSelectedIndex() != 0)
 			{
 				testTwoList.add(current.get(2));
 			}
@@ -708,7 +1208,7 @@ public class TestPanel2 extends JPanel
 			{
 				testThreeList.add(current.get(3));
 			}
-			else if (isThreeScaled == true)
+			else if (isThreeScaled == true && testThreeType.getSelectedIndex() != 0)
 			{
 				testThreeList.add(current.get(3));
 			}
@@ -717,7 +1217,7 @@ public class TestPanel2 extends JPanel
 			{
 				testFourList.add(current.get(4));
 			}
-			else if (isFourScaled == true)
+			else if (isFourScaled == true && testFourType.getSelectedIndex() != 0)
 			{
 				testFourList.add(current.get(4));
 			}
@@ -727,7 +1227,8 @@ public class TestPanel2 extends JPanel
 		if (testOneType.getSelectedItem().equals("Number Scale") || isOneScaled == true)
 		{
 			Test testOne = new Test(testOneList);
-			for (Vector<Integer> index : testOne.getOutliers())
+			targetSpinner1.setValue(testOne.getAverageScore());
+			for (Vector<Integer> index : testOne.getOutliers(outlierCoefficient))
 			{
 				index.insertElementAt(1, 1);
 
@@ -738,7 +1239,8 @@ public class TestPanel2 extends JPanel
 		if (testTwoType.getSelectedItem().equals("Number Scale") || isTwoScaled == true && testNumber >= 2)
 		{
 			Test testTwo = new Test(testTwoList);
-			for (Vector<Integer> index : testTwo.getOutliers())
+			targetSpinner2.setValue(testTwo.getAverageScore());
+			for (Vector<Integer> index : testTwo.getOutliers(outlierCoefficient))
 			{
 				index.insertElementAt(2, 1);
 
@@ -749,7 +1251,8 @@ public class TestPanel2 extends JPanel
 		if (testThreeType.getSelectedItem().equals("Number Scale") || isThreeScaled == true && testNumber >= 3)
 		{
 			Test testThree = new Test(testThreeList);
-			for (Vector<Integer> index : testThree.getOutliers())
+			targetSpinner3.setValue(testThree.getAverageScore());
+			for (Vector<Integer> index : testThree.getOutliers(outlierCoefficient))
 			{
 				index.insertElementAt(3, 1);
 
@@ -760,7 +1263,106 @@ public class TestPanel2 extends JPanel
 		if (testFourType.getSelectedItem().equals("Number Scale") || isFourScaled == true && testNumber >= 4)
 		{
 			Test testFour = new Test(testFourList);
-			for (Vector<Integer> index : testFour.getOutliers())
+			targetSpinner4.setValue(testFour.getAverageScore());
+			for (Vector<Integer> index : testFour.getOutliers(outlierCoefficient))
+			{
+				index.insertElementAt(4, 1);
+
+				outlierList.add(index);
+			}
+
+		}
+
+		table.repaint();
+	}
+
+	private void getOutliers(double testOneTarget, double testTwoTarget, double testThreeTarget, double testFourTarget)
+	{
+		ArrayList<Object> testOneList = new ArrayList<Object>();
+		ArrayList<Object> testTwoList = new ArrayList<Object>();
+		ArrayList<Object> testThreeList = new ArrayList<Object>();
+		ArrayList<Object> testFourList = new ArrayList<Object>();
+		outlierList.clear();
+		double outlierCoefficient = (double) this.outlierSpinner.getValue();
+
+		for (ArrayList<Object> current : scaledMatrix)
+		{
+			if (testOneType.getSelectedItem().equals("Number Scale"))
+			{
+				testOneList.add(current.get(1));
+
+			}
+			else if (isOneScaled == true && testOneType.getSelectedIndex() != 0)
+			{
+				testOneList.add(current.get(1));
+			}
+
+			if (testTwoType.getSelectedItem().equals("Number Scale"))
+			{
+				testTwoList.add(current.get(2));
+			}
+			else if (isTwoScaled == true && testTwoType.getSelectedIndex() != 0)
+			{
+				testTwoList.add(current.get(2));
+			}
+
+			if (testThreeType.getSelectedItem().equals("Number Scale"))
+			{
+				testThreeList.add(current.get(3));
+			}
+			else if (isThreeScaled == true && testThreeType.getSelectedIndex() != 0)
+			{
+				testThreeList.add(current.get(3));
+			}
+
+			if (testFourType.getSelectedItem().equals("Number Scale"))
+			{
+				testFourList.add(current.get(4));
+			}
+			else if (isFourScaled == true && testFourType.getSelectedIndex() != 0)
+			{
+				testFourList.add(current.get(4));
+			}
+
+		}
+
+		if (testOneType.getSelectedItem().equals("Number Scale") || isOneScaled == true)
+		{
+			Test testOne = new Test(testOneList);
+			for (Vector<Integer> index : testOne.getOutliers(outlierCoefficient, testOneTarget))
+			{
+				index.insertElementAt(1, 1);
+
+				outlierList.add(index);
+			}
+
+		}
+		if (testTwoType.getSelectedItem().equals("Number Scale") || isTwoScaled == true && testNumber >= 2)
+		{
+			Test testTwo = new Test(testTwoList);
+			for (Vector<Integer> index : testTwo.getOutliers(outlierCoefficient, testTwoTarget))
+			{
+				index.insertElementAt(2, 1);
+
+				outlierList.add(index);
+			}
+
+		}
+		if (testThreeType.getSelectedItem().equals("Number Scale") || isThreeScaled == true && testNumber >= 3)
+		{
+			Test testThree = new Test(testThreeList);
+			for (Vector<Integer> index : testThree.getOutliers(outlierCoefficient, testThreeTarget))
+			{
+				index.insertElementAt(3, 1);
+
+				outlierList.add(index);
+			}
+
+		}
+		if (testFourType.getSelectedItem().equals("Number Scale") || isFourScaled == true && testNumber >= 4)
+		{
+			Test testFour = new Test(testFourList);
+			for (Vector<Integer> index : testFour.getOutliers(outlierCoefficient, testFourTarget))
 			{
 				index.insertElementAt(4, 1);
 
@@ -892,32 +1494,38 @@ public class TestPanel2 extends JPanel
 		return scaledScore + "";
 	}
 
+	public void showOriginalScores()
+	{
+		fillTable(infoMatrix);
+
+	}
+
 	private void testCorrelations()
 	{
 		double[] testOneArray = new double[scaledMatrix.size()];
 		double[] testTwoArray = new double[scaledMatrix.size()];
 		double[] testThreeArray = new double[scaledMatrix.size()];
 		double[] testFourArray = new double[scaledMatrix.size()];
-		
+
 		for (int i = 0; i < scaledMatrix.size() - 1; i++)
 		{
 			if (testNumber == 4)
 			{
-				testOneArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - testNumber));
-				testTwoArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - testNumber + 1));
-				testThreeArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - testNumber + 2));
-				testFourArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - testNumber + 3));
+				testOneArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - 4));
+				testTwoArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - 3));
+				testThreeArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - 2));
+				testFourArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - 1));
 			}
 			if (testNumber == 3)
 			{
-				testOneArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - testNumber));
-				testTwoArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - testNumber + 1));
-				testThreeArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - testNumber + 2));
+				testOneArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - 4));
+				testTwoArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - 3));
+				testThreeArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - 2));
 			}
 			if (testNumber == 2)
 			{
-				testOneArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - testNumber));
-				testTwoArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - testNumber + 1));
+				testOneArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - 4));
+				testTwoArray[i] = Double.parseDouble((String) scaledMatrix.get(i).get(scaledMatrix.get(i).size() - 3));
 			}
 
 		}
@@ -960,6 +1568,37 @@ public class TestPanel2 extends JPanel
 			JOptionPane.showMessageDialog(null, "A Correlation cannot be calculated with only one test");
 		}
 
+	}
+
+	private void resetAllFields()
+	{
+		infoMatrix.clear();
+		scaledMatrix.clear();
+		outlierList.clear();
+		tableMatrix = null;
+		isOneScaled = false;
+		isTwoScaled = false;
+		isThreeScaled = false;
+		isFourScaled = false;
+		correlationLabel.setText("");
+		correlationLabel2.setText("");
+		correlationLabel3.setText("");
+		correlationLabel4.setText("");
+		correlationLabel5.setText("");
+		correlationLabel6.setText("");
+		targetLabel.setText("Average score");
+		oriButton.setEnabled(false);
+		corButton.setEnabled(false);
+		outliersButton.setEnabled(false);
+		quaBox.setEnabled(false);
+		tarBox.setEnabled(false);
+		outlierLabel.setEnabled(false);
+		outlierSpinner.setEnabled(false);
+		saveButton.setEnabled(false);
+		targetSpinner1.setEnabled(false);
+		targetSpinner2.setEnabled(false);
+		targetSpinner3.setEnabled(false);
+		targetSpinner4.setEnabled(false);
 	}
 
 	private Vector<Integer> compareTests(ArrayList<Object> test)

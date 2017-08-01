@@ -107,7 +107,7 @@ public class Test
 		return outlierList;
 	}*/
 	
-	public ArrayList<Vector<Integer>> getOutliers()
+	public ArrayList<Vector<Integer>> getOutliers(double outlierCoefficient)
 	{
 		ArrayList<Vector<Integer>> outlierList = new ArrayList<Vector<Integer>>();
 		
@@ -120,7 +120,7 @@ public class Test
 			Double sDeviation = (Math.abs(testList.get(i) - this.getAverageScore()) / this.getStandardDeviation());
 			Double pDeviation = ((testList.get(i) - this.getAverageScore()) / this.getStandardDeviation());
 			
-			if (1.8 <= sDeviation)
+			if (outlierCoefficient <= sDeviation)
 			{
 				Vector<Integer> temp = new Vector<Integer>();
 				temp.add(i);
@@ -136,6 +136,71 @@ public class Test
 				outlierList.add(temp);
 				
 				
+			}
+			else
+			{
+				Vector<Integer> temp = new Vector<Integer>();
+				temp.add(i);
+				if(current > average)
+				{
+					temp.add(2);
+				}
+				if(current < average)
+				{
+					temp.add(3);
+				}
+				
+				outlierList.add(temp);
+			}
+
+		}
+		return outlierList;
+	}
+	
+	public ArrayList<Vector<Integer>> getOutliers(double outlierCoefficient, double targetScore)
+	{
+		ArrayList<Vector<Integer>> outlierList = new ArrayList<Vector<Integer>>();
+		
+
+		for (int i = 0; i < testList.size(); i++)
+		{
+			Double current = testList.get(i);
+			Double average = this.getAverageScore();
+			Double deviation = this.getStandardDeviation();
+			Double sDeviation = (Math.abs(testList.get(i) - this.getAverageScore()) / this.getStandardDeviation());
+			Double pDeviation = ((testList.get(i) - this.getAverageScore()) / this.getStandardDeviation());
+			
+			if (outlierCoefficient <= sDeviation)
+			{
+				Vector<Integer> temp = new Vector<Integer>();
+				temp.add(i);
+				if(pDeviation > 0)
+				{
+					temp.add(1);
+				}
+				else
+				{
+					temp.add(0);
+				}
+				
+				outlierList.add(temp);
+				
+				
+			}
+			else
+			{
+				Vector<Integer> temp = new Vector<Integer>();
+				temp.add(i);
+				if(current > targetScore)
+				{
+					temp.add(2);
+				}
+				if(current < targetScore)
+				{
+					temp.add(3);
+				}
+				
+				outlierList.add(temp);
 			}
 
 		}
