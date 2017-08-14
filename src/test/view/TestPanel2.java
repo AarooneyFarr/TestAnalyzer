@@ -3,6 +3,7 @@ package test.view;
 import test.controller.TestController;
 import test.model.Test;
 import javax.swing.JPanel;
+import javax.swing.JTable.PrintMode;
 import javax.swing.border.Border;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
@@ -18,6 +19,7 @@ import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 import javax.swing.*;
 import javax.swing.JOptionPane;
 import java.awt.event.MouseListener;
+import java.awt.print.Printable;
 import java.awt.print.PrinterException;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -25,6 +27,9 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.io.Writer;
+import java.sql.DriverManager;
+import java.sql.ResultSetMetaData;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.Vector;
@@ -37,6 +42,7 @@ import java.awt.event.ActionListener;
 import java.awt.ScrollPane;
 import java.awt.Font;
 import java.awt.Checkbox;
+
 
 public class TestPanel2 extends JPanel
 {
@@ -161,10 +167,9 @@ public class TestPanel2 extends JPanel
 		tarBox.setEnabled(false);
 		testSpinner = new JSpinner();
 		printButton = new JButton("Print Table");
-		
 
 		// Saver
-		saveButton = new JButton("Save Report");
+		saveButton = new JButton("Print Report");
 		saveButton.setEnabled(false);
 		saveChooser = new JFileChooser();
 		saveChooser.setCurrentDirectory(new java.io.File("."));
@@ -279,6 +284,7 @@ public class TestPanel2 extends JPanel
 			{
 				return getValueAt(0, column).getClass();
 			}
+
 		};
 
 		table = new JTable(data)
@@ -453,7 +459,7 @@ public class TestPanel2 extends JPanel
 		targetSpinner3.setBounds(612, 100, 86, 20);
 		targetSpinner4.setBounds(612, 131, 86, 20);
 
-		scrollPane.setBounds(369, 175, 505, 545);
+		scrollPane.setBounds(369, 175, 506, 545);
 		table.setBounds(30, 311, 147, 102);
 		testSpinner.setBounds(147, 695, 29, 20);
 		testScanLabel.setBounds(40, 698, 99, 14);
@@ -507,52 +513,47 @@ public class TestPanel2 extends JPanel
 				}
 			}
 		});
-		
-		saveButton.addActionListener(new ActionListener()
-		{
-			public void actionPerformed(ActionEvent click)
-			{
-				try {
-				    boolean complete = table.print();
-				    if (complete) {
-				        /* show a success message  */
-				        System.out.println("Print successful");
-				    } else {
-				        /*show a message indicating that printing was cancelled */
-				        System.out.println("Print canceled");
-				    }
-				} catch (PrinterException pe) {
-				    /* Printing failed, report to the user */
-				    System.out.println("Print failed");
-				}
-			}
-		});
-//TODO fix this
-		saveButton.addActionListener(new ActionListener()
-		{
-			public void actionPerformed(ActionEvent click)
-			{
-				if (hasCorrelations == true || testNumber == 1)
-				{
-					fileName = JOptionPane.showInputDialog("Name for the test report file");
 
-					if (saveChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
+		// TODO fix this
+		saveButton.addActionListener(new ActionListener()
+		{
+			public void actionPerformed(ActionEvent click)
+			{
+				
+				Object[] options = { "Print Table", "Print Correlations" };
+				int n = JOptionPane.showOptionDialog(null, "Print Table or Print Correlations", "Print Chooser", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+						options, options[0]);
+
+				if(n==0)
+				{
+				try
+				{
+					
+					boolean complete = table.print();
+					if (complete)
 					{
-						System.out.println("getCurrentDirectory(): " + saveChooser.getCurrentDirectory());
-						System.out.println("getSelectedFile() : " + saveChooser.getSelectedFile());
-						writeFile(saveChooser.getSelectedFile());
+						/* show a success message */
+						System.out.println("Print successful");
 					}
 					else
 					{
-						System.out.println("No Selection ");
+						/*
+						 * show a message indicating that printing was cancelled
+						 */
+						System.out.println("Print canceled");
 					}
 				}
-				else
+				catch (PrinterException e)
 				{
-					JOptionPane.showMessageDialog(null, "There is no report to save.");
+					/* Printing failed, report to the user */
+					System.out.println("Print failed");
 				}
-				
-				
+				}
+				if(n==1)
+				{
+				baseController.print();
+				}
+			
 			}
 		});
 
@@ -589,13 +590,13 @@ public class TestPanel2 extends JPanel
 		{
 			public void actionPerformed(ActionEvent click)
 			{
-				if(tarBox.isSelected())
+				if (tarBox.isSelected())
 				{
-				targetSpinner1.setEnabled(true);
-				targetSpinner2.setEnabled(true);
-				targetSpinner3.setEnabled(true);
-				targetSpinner4.setEnabled(true);
-				getOutliers((Double) targetSpinner1.getValue(), (Double) targetSpinner2.getValue(), (Double) targetSpinner3.getValue(), (Double) targetSpinner4.getValue());
+					targetSpinner1.setEnabled(true);
+					targetSpinner2.setEnabled(true);
+					targetSpinner3.setEnabled(true);
+					targetSpinner4.setEnabled(true);
+					getOutliers((Double) targetSpinner1.getValue(), (Double) targetSpinner2.getValue(), (Double) targetSpinner3.getValue(), (Double) targetSpinner4.getValue());
 				}
 				else
 				{
@@ -718,12 +719,12 @@ public class TestPanel2 extends JPanel
 			}
 		};
 		testSpinner.addChangeListener(testSpinnerListener);
-		
+
 		ChangeListener outlierSpinnerListener = new ChangeListener()
 		{
 			public void stateChanged(ChangeEvent e)
 			{
-				if(tarBox.isSelected())
+				if (tarBox.isSelected())
 				{
 					getOutliers((Double) targetSpinner1.getValue(), (Double) targetSpinner2.getValue(), (Double) targetSpinner3.getValue(), (Double) targetSpinner4.getValue());
 				}
@@ -734,12 +735,12 @@ public class TestPanel2 extends JPanel
 			}
 		};
 		outlierSpinner.addChangeListener(outlierSpinnerListener);
-		
+
 		ChangeListener targetSpinnerListener = new ChangeListener()
 		{
 			public void stateChanged(ChangeEvent e)
 			{
-				if(tarBox.isSelected())
+				if (tarBox.isSelected())
 				{
 					getOutliers((Double) targetSpinner1.getValue(), (Double) targetSpinner2.getValue(), (Double) targetSpinner3.getValue(), (Double) targetSpinner4.getValue());
 				}
@@ -846,116 +847,73 @@ public class TestPanel2 extends JPanel
 				writer.println(correlationLabel4.getText());
 				writer.println(correlationLabel5.getText());
 				writer.println(correlationLabel6.getText());
-				/*writer.println("______________________________________________________________________");
-				writer.println();
-				writer.println("<html><bold>Name</bold>                         " + testOneField.getText() + "       " + testTwoField.getText() + "       " + testThreeField.getText() + "       " + testFourField.getText());
-				writer.println();
-
-				for (ArrayList<Object> current : infoMatrix)
-				{
-					String list = "";
-					if (testNumber == 4)
-					{
-						String name = (String) current.get(0);
-						String testOne = (String) " " + current.get(1);
-						String testTwo = (String) " " + current.get(2);
-						String testThree = (String) " " + current.get(3);
-						String testFour = (String) " " + current.get(4);
-
-						while (name.length() < 29)
-						{
-							name = name + " ";
-						}
-						while (testOne.length() < testOneField.getText().length() + 7)
-						{
-							testOne = testOne + " ";
-						}
-						while (testTwo.length() < testTwoField.getText().length() + 7)
-						{
-							testTwo = testTwo + " ";
-						}
-						while (testThree.length() < testThreeField.getText().length() + 7)
-						{
-							testThree = testThree + " ";
-						}
-						while (testFour.length() < testFourField.getText().length() + 7)
-						{
-							testFour = testFour + " ";
-						}
-
-						list = name + testOne + testTwo + testThree + testFour;
-						writer.println(list);
-					}
-					if (testNumber == 3)
-					{
-						String name = (String) current.get(0);
-						String testOne = (String) " " + current.get(1);
-						String testTwo = (String) " " + current.get(2);
-						String testThree = (String) " " + current.get(3);
-
-						while (name.length() < 29)
-						{
-							name = name + " ";
-						}
-						while (testOne.length() < testOneField.getText().length() + 7)
-						{
-							testOne = testOne + " ";
-						}
-						while (testTwo.length() < testTwoField.getText().length() + 7)
-						{
-							testTwo = testTwo + " ";
-						}
-						while (testThree.length() < testThreeField.getText().length() + 7)
-						{
-							testThree = testThree + " ";
-						}
-
-						list = name + testOne + testTwo + testThree;
-						writer.println(list);
-					}
-					if (testNumber == 2)
-					{
-						String name = (String) current.get(0);
-						String testOne = (String) " " + current.get(1);
-						String testTwo = (String) " " + current.get(2);
-
-						while (name.length() < 29)
-						{
-							name = name + " ";
-						}
-						while (testOne.length() < testOneField.getText().length() + 7)
-						{
-							testOne = testOne + " ";
-						}
-						while (testTwo.length() < testTwoField.getText().length() + 7)
-						{
-							testTwo = testTwo + " ";
-						}
-
-						list = name + testOne + testTwo;
-						writer.println(list);
-					}
-					if (testNumber == 1)
-					{
-						String name = (String) current.get(0);
-						String testOne = (String) " " + current.get(1);
-
-						while (name.length() < 29)
-						{
-							name = name + " ";
-						}
-						while (testOne.length() < testOneField.getText().length() + 7)
-						{
-							testOne = testOne + " ";
-						}
-
-						list = name + testOne;
-						writer.println(list);
-					}
-					writer.println();
-
-				}
-*/
+				/*
+				 * writer.println(
+				 * "______________________________________________________________________"
+				 * ); writer.println(); writer.
+				 * println("<html><bold>Name</bold>                         " +
+				 * testOneField.getText() + "       " + testTwoField.getText() +
+				 * "       " + testThreeField.getText() + "       " +
+				 * testFourField.getText()); writer.println();
+				 * 
+				 * for (ArrayList<Object> current : infoMatrix) { String list =
+				 * ""; if (testNumber == 4) { String name = (String)
+				 * current.get(0); String testOne = (String) " " +
+				 * current.get(1); String testTwo = (String) " " +
+				 * current.get(2); String testThree = (String) " " +
+				 * current.get(3); String testFour = (String) " " +
+				 * current.get(4);
+				 * 
+				 * while (name.length() < 29) { name = name + " "; } while
+				 * (testOne.length() < testOneField.getText().length() + 7) {
+				 * testOne = testOne + " "; } while (testTwo.length() <
+				 * testTwoField.getText().length() + 7) { testTwo = testTwo +
+				 * " "; } while (testThree.length() <
+				 * testThreeField.getText().length() + 7) { testThree =
+				 * testThree + " "; } while (testFour.length() <
+				 * testFourField.getText().length() + 7) { testFour = testFour +
+				 * " "; }
+				 * 
+				 * list = name + testOne + testTwo + testThree + testFour;
+				 * writer.println(list); } if (testNumber == 3) { String name =
+				 * (String) current.get(0); String testOne = (String) " " +
+				 * current.get(1); String testTwo = (String) " " +
+				 * current.get(2); String testThree = (String) " " +
+				 * current.get(3);
+				 * 
+				 * while (name.length() < 29) { name = name + " "; } while
+				 * (testOne.length() < testOneField.getText().length() + 7) {
+				 * testOne = testOne + " "; } while (testTwo.length() <
+				 * testTwoField.getText().length() + 7) { testTwo = testTwo +
+				 * " "; } while (testThree.length() <
+				 * testThreeField.getText().length() + 7) { testThree =
+				 * testThree + " "; }
+				 * 
+				 * list = name + testOne + testTwo + testThree;
+				 * writer.println(list); } if (testNumber == 2) { String name =
+				 * (String) current.get(0); String testOne = (String) " " +
+				 * current.get(1); String testTwo = (String) " " +
+				 * current.get(2);
+				 * 
+				 * while (name.length() < 29) { name = name + " "; } while
+				 * (testOne.length() < testOneField.getText().length() + 7) {
+				 * testOne = testOne + " "; } while (testTwo.length() <
+				 * testTwoField.getText().length() + 7) { testTwo = testTwo +
+				 * " "; }
+				 * 
+				 * list = name + testOne + testTwo; writer.println(list); } if
+				 * (testNumber == 1) { String name = (String) current.get(0);
+				 * String testOne = (String) " " + current.get(1);
+				 * 
+				 * while (name.length() < 29) { name = name + " "; } while
+				 * (testOne.length() < testOneField.getText().length() + 7) {
+				 * testOne = testOne + " "; }
+				 * 
+				 * list = name + testOne; writer.println(list); }
+				 * writer.println();
+				 * 
+				 * }
+				 */
 			}
 			if (testNumber == 3)
 			{

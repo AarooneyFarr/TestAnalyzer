@@ -10,7 +10,7 @@ public class TestFrame extends JFrame
 {
 
 	private TestController baseController;
-	private TestPanel2 appPanel2;
+	public TestPanel2 appPanel2;
 
 	public TestFrame(TestController baseController)
 	{
@@ -45,4 +45,6 @@ public class TestFrame extends JFrame
 
 		});
 	}
+	
+	
 }
